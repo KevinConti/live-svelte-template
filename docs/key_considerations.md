@@ -71,3 +71,36 @@
    - Minimize prop passing
    - Use stores for shared state
    - Consider SSR impact
+
+## Node Watcher Considerations
+1. 🔄 **Process Management**
+   - Run terminal as administrator on Windows
+   - Verify Node.js executable path
+   - Monitor build script output for errors
+
+2. 🏗️ **Build Pipeline**
+   - Client and SSR bundles build separately
+   - Watch for build verification messages
+   - Check output paths in logs
+   ```elixir
+   # Verify bundle paths in config
+   config :ux_express, UxExpressWeb.Endpoint,
+     watchers: [
+       node: {UxExpressWeb.Watchers.NodeWatcher, :start_link, [[]]}
+     ]
+   ```
+
+3. ⚡ **Performance Impact**
+   - Initial build may take longer
+   - Rebuilds are incremental and faster
+   - Monitor memory usage during development
+
+4. 🔍 **Common Issues**
+   - Always use `Path.expand/1` for NodeJS.call paths
+   - Verify server bundle exists before calling
+   - Check component name matches exports
+   ```elixir
+   # Correct path handling
+   module_path = Path.expand(bundle_path)
+   NodeJS.call(module_path, :render, [component, props, opts])
+   ```

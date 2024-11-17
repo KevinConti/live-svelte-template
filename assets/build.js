@@ -1,43 +1,15 @@
-/*
+/**
  * Custom build script for Phoenix + LiveSvelte integration
  * 
- * This replaces Phoenix's default esbuild configuration because:
- * 1. Phoenix's default esbuild (via Elixir wrapper) doesn't support plugins
- * 2. LiveSvelte requires a more complex setup with esbuild plugins
- * 3. We use esbuild directly as a node_module instead of the Elixir package
- * 
- * LiveSvelte + LiveView Integration:
- * LiveSvelte enables seamless integration of Svelte components within Phoenix LiveView by:
- * 1. Server-Side Rendering (SSR):
- *    - LiveView calls LiveSvelte to render Svelte components on the server
- *    - Components are pre-rendered to HTML before sending to the client
- *    - Initial page load is fast and SEO-friendly
- * 
- * 2. Client-Side Hydration:
- *    - Browser receives pre-rendered HTML and JavaScript
- *    - Svelte "hydrates" the static HTML, making it interactive
- *    - Components maintain full reactivity after hydration
- * 
- * 3. Live Updates:
- *    - LiveView manages real-time updates via WebSocket
- *    - When server state changes, only affected components re-render
- *    - Svelte handles smooth DOM updates on the client side
- * 
- * Build Process Overview:
- * - Client Build (optsClient):
- *   - Handles the browser-side bundle (js/app.js)
- *   - Compiles Svelte components for client-side hydration
- *   - Outputs to priv/static/assets/app.js for browser consumption
- *   - Includes browser-specific optimizations and bundling
- * 
- * - Server Build (optsServer):
- *   - Handles server-side rendering (js/server.js)
- *   - Compiles Svelte components for SSR (Server-Side Rendering)
- *   - Outputs to priv/static/assets/server/server.js
- *   - Enables LiveSvelte to render components on the server before sending to client
+ * This script handles building both client and server bundles for the application.
+ * It replaces Phoenix's default esbuild configuration to support:
+ * 1. Svelte component compilation
+ * 2. Server-side rendering (SSR)
+ * 3. Import glob patterns
+ * 4. Development and production modes
  */
 
-// Required build tools and plugins
+const path = require('path')
 const esbuild = require('esbuild')
 const sveltePlugin = require('esbuild-svelte')
 const importGlobPlugin = require('esbuild-plugin-import-glob').default
@@ -48,88 +20,111 @@ const args = process.argv.slice(2)
 const watch = args.includes('--watch')
 const deploy = args.includes('--deploy')
 
+// Get absolute paths for better reliability
+const assetsDir = __dirname
+const outDir = path.join(assetsDir, '..', 'priv', 'static', 'assets')
+const serverOutDir = path.join(outDir, 'server')
+
 // Shared Svelte plugin configuration for both client and server builds
 const sveltePluginConfig = {
-  preprocess: sveltePreprocess(),  // Enables preprocessing of Svelte components
-  compilerOptions: {
-    dev: !deploy,      // Development mode when not deploying
-    hydratable: true,  // Enables client-side hydration of server-rendered components
-    css: true          // Include component CSS in the build
-  }
+    preprocess: sveltePreprocess(),
+    compilerOptions: {
+        dev: !deploy,
+        hydratable: true,
+        css: 'injected'  // Modern approach instead of deprecated boolean
+    }
 }
 
 // Configuration for client-side build (browser bundle)
 const optsClient = {
-  entryPoints: ['js/app.js'],        // Main client entry point
-  bundle: true,                      // Bundle all dependencies together
-  target: 'es2017',                  // Target modern browsers
-  outdir: '../priv/static/assets',   // Output directory for client assets
-  logLevel: 'info',                  // Show detailed build information
-  sourcemap: !deploy,                // Generate source maps in development
-  minify: deploy,                    // Minify code in production
-  plugins: [
-    importGlobPlugin(),              // Allow glob imports (e.g., import * as x from './dir/*.js')
-    sveltePlugin(sveltePluginConfig) // Use shared Svelte configuration
-  ]
+    entryPoints: [path.join(assetsDir, 'js', 'app.js')],
+    bundle: true,
+    target: 'es2017',
+    outdir: outDir,
+    logLevel: 'info',
+    sourcemap: !deploy,
+    minify: deploy,
+    plugins: [
+        importGlobPlugin(),
+        sveltePlugin(sveltePluginConfig)
+    ]
 }
 
 // Configuration for server-side build (NodeJS bundle for SSR)
 const optsServer = {
-  entryPoints: ['js/server.js'],           // Server entry point for SSR
-  bundle: true,                            // Bundle dependencies
-  platform: 'node',                        // Target NodeJS platform
-  target: 'node20',                        // Target Node.js version for compatibility
-  outdir: '../_build/dev/lib/nodejs/priv', // Output directory for server bundle
-  logLevel: 'info',                        // Show detailed build information
-  format: 'cjs',                           // Use CommonJS format for Node.js compatibility
-  plugins: [
-    importGlobPlugin(),
-    sveltePlugin({
-      ...sveltePluginConfig,               // Extend shared config
-      compilerOptions: {
-        ...sveltePluginConfig.compilerOptions,
-        generate: 'ssr',                   // Generate SSR-compatible code
-        hydratable: true                   // Enable hydration of server-rendered content
-      }
-    })
-  ]
+    entryPoints: [path.join(assetsDir, 'js', 'server.js')],
+    bundle: true,
+    platform: 'node',
+    target: 'node20',
+    outdir: serverOutDir,
+    logLevel: 'info',
+    format: 'cjs',
+    plugins: [
+        importGlobPlugin(),
+        sveltePlugin({
+            ...sveltePluginConfig,
+            compilerOptions: {
+                ...sveltePluginConfig.compilerOptions,
+                generate: 'ssr',
+                hydratable: true
+            }
+        })
+    ]
 }
 
-// Main build function with error handling
+// Build both client and server bundles
 async function build() {
-  try {
-    // Build client-side bundle
-    const clientResult = await esbuild.build(optsClient)
-    console.log('Client build completed:', clientResult)
-
-    // Build server-side bundle for SSR
-    const serverResult = await esbuild.build(optsServer)
-    console.log('Server build completed:', serverResult)
-
-    if (watch) {
-      console.log('Watching for changes...')
+    console.log('\n[Build] Starting build process...')
+    
+    try {
+        // Build client bundle
+        console.log('\n[Client] Building client bundle...')
+        await esbuild.build(optsClient)
+        console.log('[Client] Build completed: files written to disk')
+        
+        // Build server bundle
+        console.log('\n[Server] Building SSR bundle...')
+        await esbuild.build(optsServer)
+        console.log('[Server] Build completed. Output files:')
+        console.log(`  - priv/static/assets/server/server.js`)
+        
+        // Verify server bundle exists
+        const fs = require('fs')
+        const serverBundlePath = path.join(serverOutDir, 'server.js')
+        if (fs.existsSync(serverBundlePath)) {
+            const stats = fs.statSync(serverBundlePath)
+            console.log(`[Server] Bundle verified at ${serverBundlePath} (${stats.size} bytes)`)
+        } else {
+            console.error('[Server] ERROR: Server bundle not found at', serverBundlePath)
+            process.exit(1)
+        }
+    } catch (error) {
+        console.error('\n[Build] Error during build:', error)
+        process.exit(1)
     }
-  } catch (err) {
-    console.error('Build failed:', err)
-    process.exit(1)  // Exit with error code
-  }
 }
 
 // Handle watch mode for development
 if (watch) {
-  // Start initial build then watch for changes
-  build().then(() => {
-    require('chokidar')
-      .watch(['js/**/*.js', 'js/**/*.svelte', 'css/**/*.css'], {
-        interval: 0,
-        ignoreInitial: true,
-      })
-      .on('all', (event, path) => {
-        console.log(`File ${path} changed (${event})`)
-        build()  // Rebuild on any file change
-      })
-  })
+    // Start initial build then watch for changes
+    build().then(() => {
+        require('chokidar')
+            .watch([
+                path.join(assetsDir, 'js', '**/*.js'),
+                path.join(assetsDir, 'js', '**/*.svelte'),
+                path.join(assetsDir, 'css', '**/*.css')
+            ], {
+                interval: 0,
+                ignoreInitial: true,
+            })
+            .on('all', (event, path) => {
+                console.log(`File ${path} changed (${event})`)
+                build().catch(error => {
+                    console.error('Error rebuilding:', error)
+                })
+            })
+        console.log('\n[Watch] Watching for changes...')
+    })
 } else {
-  // Single build for production
-  build()
+    build().catch(() => process.exit(1))
 }

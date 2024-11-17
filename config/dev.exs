@@ -27,7 +27,7 @@ config :ux_express, UxExpressWeb.Endpoint,
   watchers: [
     # Note: We've replaced Phoenix's default esbuild watcher with our custom build script
     # This allows us to use esbuild plugins required by LiveSvelte
-    node: ["build.js", "--watch", cd: Path.expand("../assets", __DIR__)],
+    node: {UxExpressWeb.Watchers.NodeWatcher, :start_link, [[]]},
     tailwind: {Tailwind, :install_and_run, [:ux_express, ~w(--watch)]}
   ]
 
@@ -85,3 +85,24 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Configure NodeJS for LiveSvelte SSR
+config :nodejs,
+  path: System.find_executable("node"),
+  module: NodeJS.Adapter.Node,
+  pool_size: 4,
+  debug: true,
+  # Add the project root to NODE_PATH to help resolve modules
+  node_path: Path.join([File.cwd!(), "priv", "static", "assets"])
+
+# Configure LiveSvelte
+config :live_svelte,
+  # Use absolute path for server bundle
+  server_bundle_path: Path.join([File.cwd!(), "priv", "static", "assets", "server", "server.js"]),
+  debug: true,
+  # Add additional SSR options
+  ssr_options: [
+    binary: false,
+    timeout: 30000,
+    esm: false
+  ]

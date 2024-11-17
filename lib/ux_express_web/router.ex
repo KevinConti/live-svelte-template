@@ -19,6 +19,9 @@ defmodule UxExpressWeb.Router do
 
     get "/", PageController, :home
     live "/counter", CounterLive
+    
+    # Debug route for SSR
+    get "/debug-ssr", PageController, :debug_ssr
   end
 
   # Other scopes may use custom stacks.

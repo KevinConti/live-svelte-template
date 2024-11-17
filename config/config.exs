@@ -46,7 +46,20 @@ config :tailwind,
 # Configure LiveSvelte
 config :live_svelte,
   app_name: :ux_express,
-  build_path: "priv/static/svelte"
+  build_path: "priv/static/svelte",
+  server_bundle_path: Path.join(["priv", "static", "assets", "server", "server.js"]),
+  ssr_module: UxExpressWeb.SSR.NodeJS
+
+# Configure NodeJS for LiveSvelte SSR
+config :nodejs,
+  path: "c:/Program Files/nodejs/node.exe",
+  pool_size: 4,
+  node_path: [
+    Path.join(["priv", "static", "assets", "server"]),
+    Path.join(["priv", "static", "assets"])
+  ],
+  module: {"server", "render"},
+  module_format: :cjs
 
 # Configures Elixir's Logger
 config :logger, :console,

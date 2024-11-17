@@ -1,23 +1,48 @@
-/*
- * Server-side entry point for LiveSvelte components
- * 
- * This file is crucial for Server-Side Rendering (SSR) in LiveSvelte:
- * 1. It exports Svelte components that LiveView needs to render on the server
- * 2. LiveSvelte uses NodeJS to run this file and render components
- * 3. The rendered HTML is then sent to the client for hydration
- * 
- * Flow:
- * - LiveView template uses <.svelte> component
- * - LiveSvelte calls NodeJS to render the component using this file
- * - Rendered HTML is injected into the LiveView response
- * - Client receives pre-rendered HTML and hydrates it
- */
+// Server-side rendering entry point
+const { Counter } = require('../svelte/components/Counter.svelte');
 
-// Import Svelte components that need SSR
-import Counter from '../svelte/components/Counter.svelte'
+// Debug logging helper
+function debugLog(...args) {
+  console.log('[SSR Debug]', ...args);
+}
 
-// Export components with their render function for SSR
-// Note: Counter.default handles ES modules, Counter handles CommonJS
-export default {
-  Counter: Counter.default || Counter
+// Error logging helper
+function errorLog(...args) {
+  console.error('[SSR Error]', ...args);
+}
+
+// Map of available components
+const components = {
+  Counter: Counter
+};
+
+// The render function that LiveSvelte calls
+function render(componentName, props, options) {
+  debugLog('render called with:', { componentName, props, options });
+  
+  try {
+    const Component = components[componentName];
+    if (!Component) {
+      throw new Error(`Component ${componentName} not found. Available: ${Object.keys(components)}`);
+    }
+    
+    debugLog('Found component:', Component);
+    
+    const result = Component.render(props);
+    debugLog('Render result:', result);
+    
+    return {
+      html: result.html,
+      css: { code: result.css?.code || '', map: result.css?.map },
+      head: result.head
+    };
+  } catch (error) {
+    errorLog('Render error:', error);
+    throw error;
+  }
+}
+
+// Export for LiveSvelte SSR
+module.exports = {
+  render: render
 };
