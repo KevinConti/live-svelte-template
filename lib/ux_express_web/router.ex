@@ -14,6 +14,13 @@ defmodule UxExpressWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Serve Svelte-compiled assets
+  scope "/svelte", UxExpressWeb do
+    pipe_through :browser
+    
+    get "/*path", PageController, :serve_svelte
+  end
+
   scope "/", UxExpressWeb do
     pipe_through :browser
 

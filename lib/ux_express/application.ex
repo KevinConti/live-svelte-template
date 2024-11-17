@@ -8,7 +8,11 @@ defmodule UxExpress.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {NodeJS.Supervisor, [path: "#{File.cwd!()}/assets", pool_size: 4]},
+      {NodeJS.Supervisor, [
+        path: LiveSvelte.SSR.NodeJS.server_path(),
+        pool_size: 4,
+        node_path: Application.get_env(:nodejs, :node_path)
+      ]},
       UxExpressWeb.Telemetry,
       UxExpress.Repo,
       {DNSCluster, query: Application.get_env(:ux_express, :dns_cluster_query) || :ignore},

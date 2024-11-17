@@ -53,7 +53,7 @@ defmodule UxExpressWeb do
         layouts: [html: UxExpressWeb.Layouts]
 
       import Plug.Conn
-      import UxExpressWeb.Gettext
+      use Gettext, backend: UxExpressWeb.Gettext
 
       unquote(verified_routes())
     end
@@ -95,7 +95,7 @@ defmodule UxExpressWeb do
       import Phoenix.HTML
       # Core UI components and translation
       import UxExpressWeb.CoreComponents
-      import UxExpressWeb.Gettext
+      use Gettext, backend: UxExpressWeb.Gettext
       import LiveSvelte
 
       # Shortcut for generating JS commands

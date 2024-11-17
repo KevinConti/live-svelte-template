@@ -17,7 +17,7 @@ defmodule UxExpressWeb.CoreComponents do
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
-  import UxExpressWeb.Gettext
+  use Gettext, backend: UxExpressWeb.Gettext
 
   @doc """
   Renders a modal.

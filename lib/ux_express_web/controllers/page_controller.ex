@@ -6,6 +6,27 @@ defmodule UxExpressWeb.PageController do
     render(conn, :home, layout: false)
   end
 
+  def serve_svelte(conn, %{"path" => path}) do
+    # Serve compiled Svelte assets from priv/static/assets
+    file_path = Path.join([Application.app_dir(:ux_express), "priv", "static", "assets", path])
+    
+    case File.read(file_path) do
+      {:ok, content} ->
+        content_type = case Path.extname(file_path) do
+          ".js" -> "application/javascript"
+          ".css" -> "text/css"
+          _ -> "application/octet-stream"
+        end
+        
+        conn
+        |> put_resp_header("content-type", content_type)
+        |> send_resp(200, content)
+        
+      {:error, _} ->
+        send_resp(conn, 404, "Not found")
+    end
+  end
+
   # Helper function to check module exports
   defp check_module_exports(module_path) do
     node_path = Application.get_env(:nodejs, :path)
